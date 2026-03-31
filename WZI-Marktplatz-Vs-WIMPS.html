@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Windige WIMPs und Marktpreis Vergleich</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 20px auto;
+        }
+        h1 {
+            color: #5e5240;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+        select, input {
+            padding: 4px;
+            box-sizing: border-box;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 15px;
+            background-color: #e8f0f5;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 4px 6px;
+            text-align: left;
+        }
+        button {
+            margin-top: 10px;
+            padding: 6px 10px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #ccdbc7;
+        }
+        .bewertung-gut {
+            color: rgb(60, 103, 40);
+            font-weight: bold;
+            font-size: 1.3em;
+        }
+        .bewertung-neutral {
+            color: rgb(16, 27, 48);
+            font-weight: bold;
+            font-size: 1.3em;
+        }
+        .bewertung-schlecht {
+            color: rgb(131, 15, 15);
+            font-weight: bold;
+            font-size: 1.3em;
+        }
+        .delta-gut {
+            background-color: #ddf6d9;
+        }
+        .delta-neutral {
+            background-color: #e9e3d1;
+        }
+        .delta-schlecht {
+            background-color: #eadfe0;
+        }
+        .emoji-icon {
+            font-size: 1.2em;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🌿 Windige WIMPs und Marktpreis Preisvergleich</h1>
+    
+    <label>💰 WIMPs gebotene Gesamtsumme
+        <input type="number" id="sang" step="0.01" value="0">
+    </label>
+    
+    <h2>🛒 Einzelne Pflanzen - Positionen hinzufügen bitte</h2>
+    <label>🌱 Pflanze:
+        <select id="pflanzeselect">
+            <!-- Wird per JS befüllt -->
+        </select>
+    </label>
+    <label>📦 Anzahl :
+        <input type="number" id="anzahl" step="1" value="1">
+    </label>
+    <button type="button" onclick="addPosition()">➕ Position hinzufügen</button>
+    
+    <h2>📋 Positionen</h2>
+    <table id="posTable">
+        <thead>
+            <tr>
+                <th>🌿 Pflanze</th>
+                <th>💵 Ladenpreis /Stk</th>
+                <th>📦 Menge</th>
+                <th>💎 Marktpreis/Stk(-0,01wt= unter Ladenpreis</th>
+                <th>📊 Marktpreis/Stk (nach 10 % Gebühr)</th>
+                <th>🎯 Gesamte Marktpreis Summe</th>
+                <th>🗑️ Entfernen</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+    
+    <button type="button" onclick="berechnenGesamt()">🧮 Summe berechnen</button>
+    
+    <div class="result" id="output"></div>
+    
+    <script>
+        // Ladenpreise mit Emoji-Kategorisierung
+        window.pflanzenEmojis = {
+            // Obst 🍎
+            'Apfel': '🍎',
+            'Birne': '🍐',
+            'Brombeere': '🫐',
+            'Erdbeere': '🍓',
+            'Heidelbeere': '🫐',
+            'Himbeere': '🍓',
+            'Johannisbeere': '🫐',
+            'Kirsche': '🍒',
+            'Mirabelle': '🍒',
+            'Orange': '🍊',
+            'Pflaume': '🍑',
+            'Trauben': '🍇',
+            'Zitronen': '🍋',
+            
+            // Gemüse 🥕
+            'Aubergine': '🍆',
+            'Blumenkohl': '🥦',
+            'Brokkoli': '🥦',
+            'Champignion': '🍄',
+            'Gurke': '🥒',
+            'Karotte': '🥕',
+            'Kartoffel': '🥔',
+            'Knoblauch': '🧄',
+            'Kürbis': '🎃',
+            'Paprika': '🫑',
+            'Radieschen': '🔴',
+            'Rotkohl': '🥬',
+            'Salat': '🥬',
+            'Spargel': '🌱',
+            'Spinat': '🥬',
+            'Tomate': '🍅',
+            'Zwiebel': '🧅',
+            'Zucchini': '🥒',
+            
+            // Blüten & Pflanzen 🌸
+            'Basilikum': '🌿',
+            'Gerbera': '🌼',
+            'Kornblume': '🌼',
+            'Krokus': '🌷',
+            'Lavendel': '💜',
+            'Lilie': '🌷',
+            'Orchidee': '🌺',
+            'Ringelblume': '🌼',
+            'Rose': '🌹',
+            'Sonnenblume': '🌻',
+            'Tulpe': '🌷',
+            
+            // Wasser-/Teichpflanzen 🌿
+            'Gelbe Teichrose': '🌼',
+            'Krebsschere': '🌿',
+            'Rohrkolben': '🌾',
+            'Schein-Calla': '🌿',
+            'Schwertlilie': '🌷',
+            'Seerose': '🌸',
+            'Sumpfdotterblume': '🌼',
+            'Wasserfeder': '🌿',
+            'Wasserknöterich': '🌿',
+            'Wassersellerie': '🌿',
+            
+            // Sonstiges 🌾
+            'Kaffee': '☕',
+            'Kakao': '🤎',
+            'Reis': '🌾',
+            'Walnuss': '🤎'
+        };
+
+        window.pflanzenPreise = {
+            'Apfel': 30.96,
+            'Aubergine': 8.88,
+            'Basilikum': 8.95,
+            'Birne': 46.80,
+            'Blumenkohl': 3.78,
+            'Brokkoli': 4.48,
+            'Brombeere': 30.00,
+            'Champignion': 32.49,
+            'Erdbeere': 0.44,
+            'Gerbera': 3.00,
+            'Gurke': 0.14,
+            'Heidelbeere': 5.04,
+            'Himbeere': 7.60,
+            'Johannisbeere': 5.75,
+            'Kaffee': 137.50,
+            'Kakao': 45.66,
+            'Karotte': 0.06,
+            'Kartoffel': 3.60,
+            'Kirsche': 41.40,
+            'Knoblauch': 5.10,
+            'Kornblume': 1.90,
+            'Krokus': 2.40,
+            'Kürbis': 22.80,
+            'Lavendel': 66.60,
+            'Lilie': 8.00,
+            'Mirabelle': 56.28,
+            'Olive': 78.00,
+            'Orange': 102.00,
+            'Orchidee': 55.00,
+            'Paprika': 7.32,
+            'Pflaume': 62.40,
+            'Radieschen': 0.22,
+            'Ringelblume': 1.80,
+            'Rose': 3.50,
+            'Rotkohl': 18.00,
+            'Salat': 0.08,
+            'Sonnenblume': 1.50,
+            'Spargel': 7.80,
+            'Spinat': 2.10,
+            'Tomate': 0.50,
+            'Trauben': 22.10,
+            'Tulpe': 4.00,
+            'Walnuss': 68.40,
+            'Zitronen': 44.98,
+            'Zucchini': 11.04,
+            'Zwiebel': 1.76,
+            'Krebsschere': 21.22,
+            'Gelbe Teichrose': 13.80,
+            'Reis': 17.18,
+            'Rohrkolben': 27.20,
+            'Schein-Calla': 13.22,
+            'Schwertlilie': 39.60,
+            'Seerose': 95.12,
+            'Sumpfdotterblume': 11.71,
+            'Wasserfeder': 36.20,
+            'Wasserknöterich': 37.26,
+            'Wassersellerie': 28.36
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const pflanzeSelect = document.getElementById('pflanzeselect');
+            Object.keys(window.pflanzenPreise).forEach(name => {
+                const emoji = window.pflanzenEmojis[name] || '🌿';
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = `${emoji} ${name}`;
+                pflanzeSelect.appendChild(opt);
+            });
+        });
+
+        function addPosition() {
+            const pflanzeSelect = document.getElementById('pflanzeselect');
+            const name = pflanzeSelect.value;
+            const n = parseInt(document.getElementById('anzahl').value, 10);
+
+            if (!name || isNaN(n) || n <= 0) {
+                alert('Bitte Pflanze und Anzahl korrekt eingeben.');
+                return;
+            }
+
+            const pl = window.pflanzenPreise[name];
+            const emoji = window.pflanzenEmojis[name] || '🌿';
+            const tbody = document.querySelector('#posTable tbody');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="name"><span class="emoji-icon">${emoji}</span>${name}</td>
+                <td class="pl">${pl.toFixed(2)}</td>
+                <td><input type="number" class="menge" value="${n}" step="1" min="1"></td>
+                <td class="xmp-td"></td>
+                <td class="xeg-td"></td>
+                <td class="gmarkt-td"></td>
+                <td><button type="button" onclick="this.closest('tr').remove()">❌</button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        function berechnenGesamt() {
+            const sang = parseFloat(document.getElementById('sang').value);
+            const tbody = document.querySelector('#posTable tbody');
+            const rows = tbody.querySelectorAll('tr');
+
+            if (rows.length === 0) {
+                document.getElementById('output').innerHTML = '⚠️ Keine Positionen in der Tabelle. Bitte Positionen hinzufügen.';
+                return;
+            }
+
+            if (isNaN(sang)) {
+                document.getElementById('output').innerHTML = '⚠️ Bitte die Gesamt-Angebotssumme korrekt eingeben.';
+                return;
+            }
+
+            let gesamtGMarkt = 0;
+            const details = [];
+
+            rows.forEach(row => {
+                const name = row.querySelector('.name').textContent.replace(/[^\w\s]/g, '').trim();
+                const pl = parseFloat(row.querySelector('.pl').textContent);
+                const nInput = row.querySelector('.menge');
+                const n = parseInt(nInput.value, 10);
+
+                if (isNaN(pl) || isNaN(n) || n <= 0) {
+                    return;
+                }
+
+                const xmp = pl - 0.01;
+                const xeg = xmp * 0.9;
+                const gMarktPos = xeg * n;
+                gesamtGMarkt += gMarktPos;
+
+                row.querySelector('.xmp-td').textContent = xmp.toFixed(2);
+                row.querySelector('.xeg-td').textContent = xeg.toFixed(2);
+                row.querySelector('.gmarkt-td').textContent = gMarktPos.toFixed(2);
+
+                details.push({name, pl, n, xmp, xeg, gMarktPos});
+            });
+
+            const delta = sang - gesamtGMarkt;
+            let bewertungClass = 'bewertung-neutral';
+            let bewertungText;
+	    const deltaRounded = Math.round(delta * 100) / 100;
+            if (deltaRounded === 0) {
+                bewertungClass = 'bewertung-neutral';
+                bewertungText = '📊 Dieser WIMP kennt wohl die Marktpreise... ';
+            } else if (deltaRounded > 0) {
+                bewertungClass = 'bewertung-gut';
+                bewertungText = '✅ Mit diesem WIMP lohnt sich doch gar das Zaungeschäft!';
+            } else {
+                bewertungClass = 'bewertung-schlecht';
+                bewertungText = '❌ Dieser windige WIMP zieht dich über den Tisch!';
+            }
+
+            let deltaClass = 'delta-neutral';
+            if (delta > 0) deltaClass = 'delta-gut';
+            else if (delta < 0) deltaClass = 'delta-schlecht';
+
+            let html = `<strong>📈 Gesamtgewinn Marktverkauf (alle Positionen):</strong> ${gesamtGMarkt.toFixed(2)} €<br>`;
+            html += `<strong>💰 Gesamt-Angebotssumme :</strong> ${sang.toFixed(2)} €<br>`;
+            html += `<span class="${deltaClass}"><strong>📊 Differenz :</strong> ${deltaRounded.toFixed(2)} €</span><br><br>`;
+            html += `<div class="${bewertungClass}">${bewertungText}</div><br><br>`;
+            html += '<strong>📋 Details pro Position:</strong><br>';
+            html += '<ul>';
+            details.forEach(d => {
+                html += `<li>${d.name} (n ${d.n}), PL ${d.pl.toFixed(2)} €, Xmp ${d.xmp.toFixed(2)} €, Xeg ${d.xeg.toFixed(2)} €, GMarkt Position ${d.gMarktPos.toFixed(2)} €</li>`;
+            });
+            html += '</ul>';
+            document.getElementById('output').innerHTML = html;
+        }
+    </script>
+</body>
+</html>
